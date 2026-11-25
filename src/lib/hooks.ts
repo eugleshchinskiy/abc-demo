@@ -32,14 +32,6 @@ export function useInView(ref: RefObject<Element | null>, rootMargin = '0px') {
   return inView
 }
 
-export function useDebouncedValue<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const t = window.setTimeout(() => setDebounced(value), ms)
-    return () => window.clearTimeout(t)
-  }, [value, ms])
-  return debounced
-}
 
 /** Width of an element, tracked with ResizeObserver. */
 export function useElementWidth(ref: RefObject<HTMLElement | null>) {

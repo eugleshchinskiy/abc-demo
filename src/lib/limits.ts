@@ -1,4 +1,4 @@
-import type { MediaKind, OutputType } from '../api/types'
+import type { MediaKind, OutputType, Plan } from '../api/types'
 
 /**
  * Shared between the client (instant feedback) and the mock API
@@ -14,7 +14,20 @@ export const LIMITS = {
   imageMinDimension: 256,
   imageMaxDimension: 8192,
   videoMaxDurationSec: 30,
+  nameMinChars: 2,
+  nameMaxChars: 40,
+  profileNameMaxChars: 20,
+  maxProfiles: 6,
+  supportMinChars: 20,
+  supportMaxChars: 1000,
+  passwordMinChars: 8,
 } as const
+
+/** What each plan unlocks. Enforced by the mock API. */
+export const PLAN_LIMITS: Record<Plan, { parallelGenerations: number; monthlyCredits: number; price: string }> = {
+  free: { parallelGenerations: 2, monthlyCredits: 15, price: '$0' },
+  pro: { parallelGenerations: 4, monthlyCredits: 200, price: '$19' },
+}
 
 export const ACCEPTED_TYPES: Record<string, { kind: MediaKind; extensions: string[] }> = {
   'image/jpeg': { kind: 'image', extensions: ['jpg', 'jpeg'] },
@@ -113,4 +126,64 @@ export async function checkFileContent(file: File, kind: MediaKind, url: string)
     if (file.type === 'video/quicktime') return null
     return `Couldn't read ${kind === 'image' ? 'image' : 'video'}. The file may be corrupted.`
   }
+}
+
+/* ------------------------------------------------------------------------ */
+/* Prompt & form validation (shared by UI and mock API)                      */
+/* ------------------------------------------------------------------------ */
+
+const PLACEHOLDER_RE = /\[[^\]\n]{1,60}\]/g
+
+/** Template placeholders like “[your product]” the user hasn't replaced yet. */
+export function findPlaceholders(prompt: string): string[] {
+  return [...new Set(prompt.match(PLACEHOLDER_RE) ?? [])]
+}
+
+/** Tiny demo moderation list — real moderation would be server-side ML. */
+const BLOCKED_TERMS = ['nsfw', 'nude', 'naked', 'gore', 'porn', 'deepfake']
+
+export function findBlockedTerm(prompt: string): string | null {
+  const lower = prompt.toLowerCase()
+  return BLOCKED_TERMS.find((t) => new RegExp(`\\b${t}\\b`).test(lower)) ?? null
+}
+
+/** Returns a user-facing error for the prompt, or null when it can be sent. */
+export function validatePrompt(prompt: string): string | null {
+  const trimmed = prompt.trim()
+  if (trimmed.length < LIMITS.promptMinChars) {
+    return `Describe what you want to create (at least ${LIMITS.promptMinChars} characters).`
+  }
+  if (trimmed.length > LIMITS.promptMaxChars) return `Prompt must be at most ${LIMITS.promptMaxChars} characters.`
+  const placeholders = findPlaceholders(trimmed)
+  if (placeholders.length) {
+    const list = placeholders.slice(0, 2).join(', ')
+    return `Replace ${list}${placeholders.length > 2 ? ` and ${placeholders.length - 2} more` : ''} with your own details.`
+  }
+  const blocked = findBlockedTerm(trimmed)
+  if (blocked) return `“${blocked}” isn't allowed by the content policy. Please rephrase.`
+  return null
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+
+export function validateEmail(email: string): string | null {
+  const v = email.trim()
+  if (!v) return 'Email is required.'
+  if (v.length > 254 || !EMAIL_RE.test(v)) return 'Enter a valid email address.'
+  return null
+}
+
+export function validateName(name: string, max: number = LIMITS.nameMaxChars): string | null {
+  const v = name.trim()
+  if (v.length < LIMITS.nameMinChars) return `Use at least ${LIMITS.nameMinChars} characters.`
+  if (v.length > max) return `Use at most ${max} characters.`
+  if (!/^[\p{L}\p{N}][\p{L}\p{N} .'’&-]*$/u.test(v)) return 'Use letters, numbers, spaces and . \' - & only.'
+  return null
+}
+
+/** What “Auto” resolves to — shared so the composer can show the exact cost. */
+export function resolveOutputType(prompt: string, outputType: OutputType, hasVideoReference: boolean): Exclude<OutputType, 'auto'> {
+  if (outputType !== 'auto') return outputType
+  if (hasVideoReference || /\b(video|animate|animation|clip|reel|motion|lipsync)\b/i.test(prompt)) return 'video'
+  return 'image'
 }

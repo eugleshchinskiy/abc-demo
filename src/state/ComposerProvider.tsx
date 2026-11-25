@@ -12,14 +12,21 @@ import {
 } from './composer-context'
 
 const fingerprint = (f: File) => `${f.name}:${f.size}:${f.lastModified}`
+const DRAFT_KEY = 'artven:draft'
 
 export function ComposerProvider({ children }: { children: ReactNode }) {
-  const [prompt, setPromptState] = useState('')
+  // The draft survives reloads within the tab.
+  const [prompt, setPromptState] = useState(() => sessionStorage.getItem(DRAFT_KEY) ?? '')
   const [outputType, setOutputType] = useState<OutputType>('auto')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [template, setTemplate] = useState<ComposerTemplate | null>(null)
   const [notices, setNotices] = useState<string[]>([])
   const [focusRequest, setFocusRequest] = useState(0)
+
+  useEffect(() => {
+    if (prompt) sessionStorage.setItem(DRAFT_KEY, prompt)
+    else sessionStorage.removeItem(DRAFT_KEY)
+  }, [prompt])
 
   // Mirrors of state for use inside async callbacks.
   const attachmentsRef = useRef(attachments)

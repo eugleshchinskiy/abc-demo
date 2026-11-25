@@ -1,35 +1,41 @@
 import { NavLink } from 'react-router'
-import { Folder, LayoutGrid, MessageSquare, Search, Settings, type LucideIcon } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import { useUi } from '../../state/ui-context'
+import { Icon, type IconName } from '../ui/Icon'
 
 interface NavItem {
   to: string
   label: string
-  icon: LucideIcon
-  badge?: boolean
+  icon: IconName
+  unread?: boolean
 }
 
-function SideLink({ to, label, icon: Icon, badge }: NavItem) {
+/** Figma "nav-item": 48px column, 32px rounded icon slot, 9px label. */
+function SideLink({ to, label, icon, unread }: NavItem) {
   return (
     <NavLink
       to={to}
       end={to === '/'}
-      className="group flex w-full flex-col items-center gap-1 py-1.5 text-[10.5px] font-medium focus-visible:outline-none"
+      className="group flex w-12 flex-col items-center gap-1 py-1 focus-visible:outline-none"
     >
       {({ isActive }) => (
         <>
           <span
             className={cn(
-              'grid size-9 place-items-center rounded-xl transition-colors group-focus-visible:ring-2 group-focus-visible:ring-white/40',
-              isActive ? 'bg-white/[0.12] text-white' : 'text-zinc-400 group-hover:bg-white/[0.06] group-hover:text-zinc-200',
+              'grid size-8 place-items-center rounded-[10px] transition-colors group-focus-visible:ring-2 group-focus-visible:ring-purple/60',
+              isActive ? 'bg-container-2 text-white' : 'text-tertiary group-hover:bg-container group-hover:text-white',
             )}
           >
-            <Icon className="size-[18px]" strokeWidth={1.75} />
+            <Icon name={icon} />
           </span>
-          <span className={cn('flex items-center gap-1', isActive ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-300')}>
+          <span
+            className={cn(
+              'flex h-3 items-center gap-1 text-[9px] leading-3 font-medium',
+              isActive ? 'text-white' : 'text-tertiary group-hover:text-secondary',
+            )}
+          >
             {label}
-            {badge && <span className="size-1.5 rounded-full bg-violet-400" aria-label="new" />}
+            {unread && <span className="size-1 rounded-full bg-purple" aria-label="new results" />}
           </span>
         </>
       )}
@@ -38,26 +44,30 @@ function SideLink({ to, label, icon: Icon, badge }: NavItem) {
 }
 
 export function Sidebar() {
-  const { setSearchOpen, hasNewResults } = useUi()
+  const { openDialog, hasNewResults } = useUi()
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-[68px] flex-col items-center border-r border-white/[0.06] bg-[#141414] py-3">
-      <button
-        type="button"
-        onClick={() => setSearchOpen(true)}
-        aria-label="Search (⌘K)"
-        title="Search (⌘K)"
-        className="grid size-9 place-items-center rounded-xl text-zinc-400 transition-colors hover:bg-white/[0.06] hover:text-white"
-      >
-        <Search className="size-[18px]" strokeWidth={1.75} />
-      </button>
-      <div className="my-3 h-px w-8 bg-white/[0.08]" />
-      <nav className="flex w-full flex-col items-center gap-1.5" aria-label="Main">
-        <SideLink to="/" label="Home" icon={LayoutGrid} />
-        <SideLink to="/chat" label="Chat" icon={MessageSquare} />
-        <SideLink to="/results" label="Results" icon={Folder} badge={hasNewResults} />
+    <aside className="fixed inset-y-0 left-0 z-40 flex w-16 flex-col items-center gap-4 bg-bg px-2 py-4">
+      <div className="flex h-10 w-full items-center justify-center">
+        <button
+          type="button"
+          onClick={() => openDialog('search')}
+          aria-label="Search (⌘K)"
+          title="Search (⌘K)"
+          className="grid size-8 place-items-center rounded-[10px] text-tertiary transition-colors hover:bg-container hover:text-white focus-visible:ring-2 focus-visible:ring-purple/60 focus-visible:outline-none"
+        >
+          <Icon name="search" />
+        </button>
+      </div>
+      <div className="h-px w-12 bg-container" />
+      <nav className="flex w-full flex-col items-center gap-1" aria-label="Main">
+        <SideLink to="/" label="Home" icon="home" />
+        <SideLink to="/chat" label="Chat" icon="chat" />
+        <SideLink to="/results" label="Results" icon="results" unread={hasNewResults} />
       </nav>
-      <div className="my-3 h-px w-8 bg-white/[0.08]" />
-      <SideLink to="/settings" label="Settings" icon={Settings} />
+      <div className="flex w-full flex-col items-center gap-3">
+        <div className="h-px w-12 bg-container" />
+        <SideLink to="/settings" label="Settings" icon="settings" />
+      </div>
     </aside>
   )
 }

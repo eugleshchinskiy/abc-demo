@@ -1,4 +1,9 @@
-import type { Idea, Media, OutputType, Tool, Wish, WishCategory } from '../api/types'
+import type { ContentType, Idea, Media, OutputType, ProductProfile, Tool, Wish, WishCategory } from '../api/types'
+import ideaEditBackground from '../assets/figma/idea-edit-background.jpg'
+import ideaProductProfile from '../assets/figma/idea-product-profile.jpg'
+import ideaSmartRetouch from '../assets/figma/idea-smart-retouch.jpg'
+import ideaStudioShoot from '../assets/figma/idea-studio-shoot.jpg'
+import profileBottle from '../assets/figma/profile-bottle.jpg'
 
 /* ------------------------------------------------------------------------ */
 /* Deterministic randomness so the infinite feed is stable between reloads  */
@@ -225,10 +230,16 @@ const STYLES = [
   'Retro', 'Frosted', 'Velvet', 'Sunlit', 'Noir', 'Candy', 'Glossy', 'Y2K', 'Brutalist',
 ]
 
-/** Height / width ratios — alternating tall and short cards like the mockup. */
-const ASPECTS = [1.75, 1.22, 1.5, 1.3, 1.68, 1.2, 1.42]
+/** Height / width ratios — the Figma tiles are 406, 320 and 280px tall at 228.8px wide. */
+const TALL = 406 / 228.8
+const MID = 320 / 228.8
+const SHORT = 280 / 228.8
+const ASPECTS = [TALL, SHORT, TALL, MID, TALL, MID, SHORT, TALL]
 
 const CARD_WIDTH = 480
+
+const IMAGE_CONTENT_TYPES: ContentType[] = ['photo', 'photoshoot', 'post', 'campaign', 'carousel']
+const VIDEO_CONTENT_TYPES: ContentType[] = ['video', 'reel', 'stories', 'movie', 'hook']
 
 /** Builds wish #index of a category. Pure and deterministic. */
 export function makeWish(categoryId: string, index: number): Wish {
@@ -246,7 +257,8 @@ export function makeWish(categoryId: string, index: number): Wish {
   const zoom = cycle === 0 ? 1 : 1 + ((cycle % 4) + 1) * 0.15
 
   let media: Media
-  if (spec.videoChance && rnd() < spec.videoChance) {
+  // Every category gets some video templates so Smart Search's video types always match.
+  if (rnd() < (spec.videoChance ?? 0.1)) {
     const v = VIDEOS[index % VIDEOS.length]
     media = {
       type: 'video',
@@ -265,10 +277,14 @@ export function makeWish(categoryId: string, index: number): Wish {
     }
   }
 
+  const types = media.type === 'video' ? VIDEO_CONTENT_TYPES : IMAGE_CONTENT_TYPES
+  const contentType = types[Math.floor(rnd() * types.length)]
+
   return {
     id: `${categoryId}~${index}`,
     title: `${style} ${noun}`,
     categoryId,
+    contentType,
     media,
     prompt: spec.prompt(style.toLowerCase()),
     outputType: media.type === 'video' ? 'video' : (spec.outputType ?? 'auto'),
@@ -307,22 +323,22 @@ const thumb = (id: string) => unsplash(id, 200, 200)
 export const IDEAS: Idea[] = [
   {
     id: 'idea-product-profile', title: 'Product Profile', description: 'Create consistent brand content',
-    thumbnailUrl: thumb('1505740420928-5e560c06d30e'), outputType: 'image',
+    thumbnailUrl: ideaProductProfile, outputType: 'image',
     prompt: 'Create a consistent product profile for [your product]: 4 matching shots (front, side, detail, lifestyle) using our brand colors [brand colors] and a clean studio backdrop.',
   },
   {
     id: 'idea-studio-shoot', title: 'Studio Shoot', description: 'Full campaign photoshoot',
-    thumbnailUrl: thumb('1584917865442-de89df76afd3'), outputType: 'image',
+    thumbnailUrl: ideaStudioShoot, outputType: 'image',
     prompt: 'Run a full campaign photoshoot for [your product] in a professional studio: hero shot, model shot and close-up, soft key light, [mood] mood.',
   },
   {
     id: 'idea-smart-retouch', title: 'Smart Retouch', description: 'Fix product imperfections',
-    thumbnailUrl: thumb('1590874103328-eac38a683ce7'), outputType: 'image',
+    thumbnailUrl: ideaSmartRetouch, outputType: 'image',
     prompt: 'Retouch the attached photo of [your product]: remove dust, scratches and creases, even out the colors and keep the original texture realistic.',
   },
   {
     id: 'idea-edit-background', title: 'Edit Background', description: 'Set a new scene',
-    thumbnailUrl: thumb('1566150905458-1bf1fc113f0d'), outputType: 'image',
+    thumbnailUrl: ideaEditBackground, outputType: 'image',
     prompt: 'Replace the background of the attached [your product] photo with [new scene], matching lighting, shadows and perspective.',
   },
   {
@@ -369,29 +385,124 @@ export const IDEAS: Idea[] = [
 
 export const IDEAS_PER_PAGE = 8
 
+/** Tools from the Figma "ToolsBar". */
 export const TOOLS: Tool[] = [
   {
-    id: 'tool-remove-bg', title: 'Remove Background', description: 'Transparent PNG in one click', icon: 'eraser',
-    outputType: 'image', prompt: 'Remove the background from the attached image and return a transparent PNG with clean edges.',
+    id: 'tool-create-image', title: 'Create Image', description: 'Text to image in seconds', icon: 'image-generate',
+    category: 'image', popular: true, outputType: 'image',
+    prompt: 'A photorealistic image of [subject] in [setting], [lighting] lighting, shot on a 50mm lens.',
   },
   {
-    id: 'tool-upscale', title: 'Upscale', description: 'Up to 4× sharper resolution', icon: 'scale',
-    outputType: 'image', prompt: 'Upscale the attached image 4× while preserving fine detail and avoiding artifacts.',
+    id: 'tool-extend-video', title: 'Extend Video', description: 'Continue a clip seamlessly', icon: 'video-extend',
+    category: 'video', popular: true, outputType: 'video',
+    prompt: 'Extend the attached video by 5 seconds, continuing the motion naturally with [camera move].',
   },
   {
-    id: 'tool-relight', title: 'Relight', description: 'Change the lighting mood', icon: 'sun',
-    outputType: 'image', prompt: 'Relight the attached image with [lighting setup, e.g. golden hour from the left].',
+    id: 'tool-create-video', title: 'Create Video', description: 'Text or image to video', icon: 'videos',
+    category: 'video', popular: true, outputType: 'video',
+    prompt: 'A 5-second cinematic video of [subject] [action], [camera move], [mood] mood.',
   },
   {
-    id: 'tool-ghost', title: 'Ghost Mannequin', description: 'Hollow-man apparel', icon: 'shirt',
-    outputType: 'image', prompt: 'Convert the attached garment photo into a ghost mannequin image on white.',
+    id: 'tool-motion-swap', title: 'Motion Swap', description: 'Transfer motion to your model', icon: 'motion-swap',
+    category: 'video', popular: true, outputType: 'video',
+    prompt: 'Apply the motion from the attached reference video to the person in the attached photo, keep the outfit unchanged.',
   },
   {
-    id: 'tool-animate', title: 'Image to Video', description: 'Bring a still to life', icon: 'film',
-    outputType: 'video', prompt: 'Animate the attached image into a 5-second loop with [camera motion, e.g. slow push-in].',
+    id: 'tool-edit-image', title: 'Edit Image', description: 'Change anything with words', icon: 'image-edit',
+    category: 'image', popular: true, outputType: 'image',
+    prompt: 'Edit the attached image: [describe the change], keep everything else untouched.',
   },
   {
-    id: 'tool-recolor', title: 'Recolor', description: 'Try new colorways', icon: 'palette',
-    outputType: 'image', prompt: 'Recolor [your product] in the attached image to [new color], keeping materials and shading realistic.',
+    id: 'tool-lipsync', title: 'Lipsync', description: 'Make a portrait speak', icon: 'lipsync',
+    category: 'video', popular: true, outputType: 'video',
+    prompt: 'Make the person in the attached photo say: "[script]" with natural lip movement and subtle head motion.',
+  },
+  {
+    id: 'tool-remove-bg', title: 'Remove Background', description: 'Clean cut-out on white', icon: 'image-edit',
+    category: 'image', popular: true, outputType: 'image',
+    prompt: 'Remove the background from the attached image and place the product on pure white with a soft contact shadow.',
+  },
+  {
+    id: 'tool-upscale', title: 'Upscale', description: 'Up to 4× sharper', icon: 'image-generate',
+    category: 'image', popular: true, outputType: 'image',
+    prompt: 'Upscale the attached image 4× while preserving fine detail and avoiding artifacts.',
+  },
+  {
+    id: 'tool-animate', title: 'Animate Image', description: 'Bring a still to life', icon: 'videos',
+    category: 'video', popular: false, outputType: 'video',
+    prompt: 'Animate the attached image into a 5-second loop with a slow push-in and gentle parallax.',
+  },
+  {
+    id: 'tool-relight', title: 'Relight', description: 'Change the lighting mood', icon: 'image-edit',
+    category: 'image', popular: false, outputType: 'image',
+    prompt: 'Relight the attached image with golden-hour light coming from the left, keep the colors natural.',
   },
 ]
+
+/* ------------------------------------------------------------------------ */
+/* Product profiles (Smart Search)                                           */
+/* ------------------------------------------------------------------------ */
+
+export const SEED_PROFILES: ProductProfile[] = [
+  { id: 'prf_headphones', name: 'Headphones', categoryId: 'electronics', imageUrl: ideaProductProfile },
+  { id: 'prf_bottle', name: 'Bottle', categoryId: 'sports', imageUrl: profileBottle },
+]
+
+/* ------------------------------------------------------------------------ */
+/* Generation output — the prompt decides what you get                      */
+/* ------------------------------------------------------------------------ */
+
+const KEYWORDS: [RegExp, keyof typeof PHOTOS][] = [
+  [/\b(food|dish|burger|pizza|cake|dessert|coffee|drink|menu|brunch|salad)\b/i, 'food'],
+  [/\b(ring|necklace|jewel(le)?ry|earring|bracelet|diamond|gold)\b/i, 'jewelry'],
+  [/\b(bag|handbag|purse|tote|backpack)\b/i, 'bags'],
+  [/\b(shoe|shoes|sneaker|sneakers|boot|boots|heels|footwear)\b/i, 'footwear'],
+  [/\b(skincare|serum|cream|lipstick|perfume|beauty|makeup|cosmetic|lotion)\b/i, 'beauty'],
+  [/\b(sofa|chair|interior|room|furniture|lamp|kitchen|home decor)\b/i, 'interior'],
+  [/\b(phone|headphones?|laptop|watch|device|camera|speaker|gadget|tech)\b/i, 'electronics'],
+  [/\b(hoodie|t-?shirt|jacket|sweater|ghost mannequin)\b/i, 'apparel'],
+  [/\b(dress|fashion|model|outfit|editorial|lookbook|wear(ing)?|garment)\b/i, 'clothing'],
+  [/\b(portrait|face|person|woman|man|selfie)\b/i, 'portraits'],
+]
+
+function aspectFor(prompt: string): number {
+  if (/\b(vertical|story|stories|reel|tiktok|9:16)\b/i.test(prompt)) return 16 / 9
+  if (/\b(square|1:1|instagram post)\b/i.test(prompt)) return 1
+  if (/\b(wide|landscape|banner|16:9|youtube|cinematic)\b/i.test(prompt)) return 9 / 16
+  return 5 / 4
+}
+
+/**
+ * Deterministic "model output": keywords in the prompt pick the subject,
+ * format words pick the aspect ratio, a wish template keeps its look.
+ */
+export function generateOutput(prompt: string, outputType: 'image' | 'video', seed: string, templateWishId?: string): Media {
+  const rnd = mulberry32(hashString(seed))
+  const aspect = aspectFor(prompt)
+  const width = 768
+  const height = Math.round(width * aspect)
+
+  if (outputType === 'video') {
+    const v = VIDEOS[Math.floor(rnd() * VIDEOS.length)]
+    return { type: 'video', url: v.url, posterUrl: unsplash(v.posterPhoto, width, height), width, height }
+  }
+
+  let photo: string | undefined
+  const template = templateWishId ? wishById(templateWishId) : null
+  if (template?.media.type === 'image') {
+    photo = /photo-([\w-]+)\?/.exec(template.media.url)?.[1]
+  }
+  if (!photo) {
+    const pool = KEYWORDS.find(([re]) => re.test(prompt))?.[1] ?? 'misc'
+    photo = PHOTOS[pool][Math.floor(rnd() * PHOTOS[pool].length)]
+  }
+  // A slightly different crop each time so re-runs look like new takes.
+  const zoom = 1.05 + rnd() * 0.35
+  return {
+    type: 'image',
+    url: unsplash(photo, width, height, zoom),
+    posterUrl: unsplash(photo, 24, Math.round(24 * aspect), zoom),
+    width,
+    height,
+  }
+}

@@ -1,7 +1,8 @@
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import { AppShell } from './components/layout/AppShell'
 import { HomePage } from './pages/HomePage'
-import { ChatPage, NotFoundPage, ResultsPage, SettingsPage } from './pages/PlaceholderPages'
+import { ChatPage, NotFoundPage, SettingsPage } from './pages/PlaceholderPages'
+import { ResultsPage } from './pages/ResultsPage'
 
 const router = createBrowserRouter([
   {
