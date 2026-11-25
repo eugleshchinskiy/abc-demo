@@ -24,10 +24,10 @@ function useNow(active: boolean) {
 function GenerationCard({ g, now, onOpen }: { g: Generation; now: number; onOpen: () => void }) {
   const running = g.status === 'queued' || g.status === 'processing'
   const secondsLeft = Math.max(1, Math.ceil((Date.parse(g.finishesAt) - now) / 1000))
-  const aspect = g.output ? `${g.output.width} / ${g.output.height}` : g.outputType === 'video' ? '9 / 16' : '4 / 5'
 
   return (
-    <article className="group relative overflow-hidden rounded-2xl bg-bg" style={{ aspectRatio: aspect }}>
+    // Uniform 4:5 tiles keep the grid tidy whatever the output format; the viewer shows the full frame.
+    <article className="group relative aspect-4/5 overflow-hidden rounded-2xl bg-bg">
       {g.status === 'done' && g.output ? (
         <button type="button" onClick={onOpen} aria-label="Open result" className="absolute inset-0 focus-visible:outline-none">
           {g.output.type === 'video' ? (
@@ -190,9 +190,9 @@ export function ResultsPage() {
           </span>
         )}
       </div>
-      <div className={cn('grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5', isPending && 'opacity-60')}>
+      <div className={cn('grid grid-cols-2 items-start gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6', isPending && 'opacity-60')}>
         {isPending
-          ? Array.from({ length: 5 }, (_, i) => <div key={i} className="aspect-[4/5] rounded-2xl skeleton" />)
+          ? Array.from({ length: 5 }, (_, i) => <div key={i} className="aspect-4/5 rounded-2xl skeleton" />)
           : data.map((g) => <GenerationCard key={g.id} g={g} now={now} onOpen={() => setOpenId(g.id)} />)}
       </div>
       {open && <ResultViewer g={open} onClose={() => setOpenId(null)} />}
